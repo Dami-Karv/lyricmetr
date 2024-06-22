@@ -16,7 +16,13 @@ function App() {
         }
       });
 
-      const lyrics = response.data.response.song.lyrics;
+      const songPath = response.data.response.song.path;
+      const lyricsPageResponse = await axios.get(`https://genius.com${songPath}`);
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
+      const lyrics = doc.querySelector('.lyrics').innerText;
+
       const count = countOccurrences(lyrics, word);
       setResult(count);
     } catch (error) {
