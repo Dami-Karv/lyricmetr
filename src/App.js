@@ -9,20 +9,27 @@ function App() {
 
   const fetchSongLyrics = async () => {
     try {
+      // Extract the song ID from the provided URL
       const songId = songUrl.split('-').pop();
+      // Fetch song details from Genius API
       const response = await axios.get(`https://api.genius.com/songs/${songId}`, {
         headers: {
           Authorization: `Bearer ${process.env.REACT_APP_GENIUS_ACCESS_TOKEN}`
         }
       });
 
+      // Extract the song path from the response
       const songPath = response.data.response.song.path;
+      // Fetch the song page HTML
       const lyricsPageResponse = await axios.get(`https://genius.com${songPath}`);
 
+      // Use DOMParser to extract lyrics from the HTML
       const parser = new DOMParser();
       const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
-      const lyrics = doc.querySelector('.lyrics').innerText;
+      const lyricsElement = doc.querySelector('.lyrics') || doc.querySelector('.Lyrics__Container'); // Adapt as necessary
+      const lyrics = lyricsElement ? lyricsElement.innerText : '';
 
+      // Count the occurrences of the word in the lyrics
       const count = countOccurrences(lyrics, word);
       setResult(count);
     } catch (error) {
