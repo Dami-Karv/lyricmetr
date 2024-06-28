@@ -11,6 +11,7 @@ function App() {
   const [albumSongs, setAlbumSongs] = useState([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeButton, setActiveButton] = useState('');
 
   const fetchSongId = async (query) => {
     try {
@@ -91,30 +92,38 @@ function App() {
       <header className="App-header">
         <h1>Lyricmetr</h1>
         <div className="button-container">
-          <button onClick={fetchSongLyrics}>Count Word in Song</button>
-          <button onClick={() => {
-            const album = prompt("Enter the album name:");
-            if (album) {
-              setAlbumName(album);
-              fetchAlbumSongs();
-            }
-          }}>List Songs in Album</button>
+          <button onClick={() => setActiveButton('countWord')}>Count Word in Song</button>
+          <button onClick={() => setActiveButton('listSongs')}>List Songs in Album</button>
           <button>Button 3</button> {/* Placeholder for future functionality */}
         </div>
-        <div className="input-container">
-          <input
-            type="text"
-            placeholder="Enter word to search"
-            value={word}
-            onChange={(e) => setWord(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Enter Genius song URL"
-            value={songUrl}
-            onChange={(e) => setSongUrl(e.target.value)}
-          />
-        </div>
+        {activeButton === 'countWord' && (
+          <div className="input-container">
+            <input
+              type="text"
+              placeholder="Enter word to search"
+              value={word}
+              onChange={(e) => setWord(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Enter Genius song URL"
+              value={songUrl}
+              onChange={(e) => setSongUrl(e.target.value)}
+            />
+            <button onClick={fetchSongLyrics}>Fetch</button>
+          </div>
+        )}
+        {activeButton === 'listSongs' && (
+          <div className="input-container">
+            <input
+              type="text"
+              placeholder="Enter album name"
+              value={albumName}
+              onChange={(e) => setAlbumName(e.target.value)}
+            />
+            <button onClick={fetchAlbumSongs}>Fetch Album Songs</button>
+          </div>
+        )}
         {isLoading && <p>Loading...</p>}
         {result && !error && <p>The word "{word}" appears {result} times in the song.</p>}
         {songDetails && (
