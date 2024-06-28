@@ -18,11 +18,12 @@ function App() {
   const fetchSongLyrics = async () => {
     setError('');
     try {
+      console.log('Song URL:', songUrl); // Log the song URL
       const songId = extractSongId(songUrl);
       if (!songId) {
         throw new Error('Invalid Genius song URL');
       }
-      console.log(`Extracted song ID: ${songId}`);
+      console.log('Extracted song ID:', songId); // Log the extracted song ID
 
       const response = await axios.get(`https://your-service.onrender.com/songs/${songId}`);
 
