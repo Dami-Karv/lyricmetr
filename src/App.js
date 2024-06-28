@@ -10,8 +10,14 @@ function App() {
   const [error, setError] = useState('');
 
   const extractSongId = (url) => {
+    console.log('Extracting song ID from URL:', url); // Log the URL being processed
     const regex = /genius\.com\/.*-(\d+)/;
     const match = url.match(regex);
+    if (match) {
+      console.log('Match found:', match); // Log the match found by the regex
+    } else {
+      console.log('No match found'); // Log if no match is found
+    }
     return match ? match[1] : null;
   };
 
