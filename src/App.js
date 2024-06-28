@@ -10,9 +10,14 @@ function App() {
   const [error, setError] = useState('');
 
   const extractSongId = (url) => {
-    const regex = /genius\.com\/.*-(\d+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
+    try {
+      const parsedUrl = new URL(url);
+      const pathSegments = parsedUrl.pathname.split('-');
+      return pathSegments[pathSegments.length - 1];
+    } catch (error) {
+      console.error('Invalid URL format:', error);
+      return null;
+    }
   };
 
   const fetchSongLyrics = async () => {
@@ -24,16 +29,12 @@ function App() {
       }
       console.log(`Extracted song ID: ${songId}`);
 
-      const response = await axios.get(`https://api.genius.com/songs/${songId}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.REACT_APP_GENIUS_ACCESS_TOKEN}`
-        }
-      });
+      const response = await axios.get(`https://your-service.onrender.com/songs/${songId}`);
 
-      console.log('Genius API response:', response);
+      console.log('Proxy API response:', response);
 
       const songPath = response.data.response.song.path;
-      const lyricsPageResponse = await axios.get(`https://genius.com${songPath}`);
+      const lyricsPageResponse = await axios.get(`https://your-service.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
