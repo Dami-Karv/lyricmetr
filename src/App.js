@@ -45,6 +45,8 @@ function App() {
       console.log('fetchSongLyrics - Lyrics page response:', lyricsPageResponse);
   
       const parser = new DOMParser();
+
+      
       const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
       console.log('fetchSongLyrics - Parsed HTML document:', doc);
   
