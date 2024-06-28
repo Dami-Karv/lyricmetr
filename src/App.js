@@ -8,11 +8,12 @@ function App() {
   const [result, setResult] = useState(null);
   const [songDetails, setSongDetails] = useState(null);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchSongId = async (query) => {
     try {
       console.log(`fetchSongId - Searching for song with query: ${query}`);
-      const response = await axios.get(`https://your-service.onrender.com/search`, {
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
         params: { q: query }
       });
       console.log(`fetchSongId - API Response:`, response);
@@ -26,6 +27,7 @@ function App() {
   };
 
   const fetchSongLyrics = async () => {
+    setIsLoading(true);
     setError('');
     try {
       console.log('fetchSongLyrics - Song URL:', songUrl); // Log the song URL
@@ -34,19 +36,30 @@ function App() {
       const songId = await fetchSongId(songTitle);
       console.log('fetchSongLyrics - Extracted song ID:', songId);
 
-      const response = await axios.get(`https://your-service.onrender.com/songs/${songId}`);
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/songs/${songId}`);
       console.log('fetchSongLyrics - Proxy API response:', response);
 
       const songPath = response.data.response.song.path;
       console.log('fetchSongLyrics - Song path:', songPath);
-      const lyricsPageResponse = await axios.get(`https://your-service.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
+      const lyricsPageResponse = await axios.get(`https://lyricmetrproxy.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
       console.log('fetchSongLyrics - Lyrics page response:', lyricsPageResponse);
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
       console.log('fetchSongLyrics - Parsed HTML document:', doc);
-      const lyricsElement = doc.querySelector('.lyrics') || doc.querySelector('.Lyrics__Container');
+
+      // Extracting lyrics from the HTML
+      let lyricsElement = doc.querySelector('.lyrics');
+      if (!lyricsElement) {
+        lyricsElement = doc.querySelector('.Lyrics__Container');
+      }
       console.log('fetchSongLyrics - Lyrics element:', lyricsElement);
+
+      // Handle case if lyrics are still not found
+      if (!lyricsElement) {
+        throw new Error('Lyrics element not found');
+      }
+
       const lyrics = lyricsElement ? lyricsElement.innerText : '';
       console.log('fetchSongLyrics - Extracted lyrics:', lyrics);
 
@@ -58,6 +71,8 @@ function App() {
       console.error('fetchSongLyrics - Error fetching data from Genius API', error);
       setError('Error fetching song data');
       setResult('Error fetching song data');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,7 +109,8 @@ function App() {
           />
           <button onClick={fetchSongLyrics}>Fetch</button>
         </div>
-        {result && <p>The word "{word}" appears {result} times in the song.</p>}
+        {isLoading && <p>Loading...</p>}
+        {result && !error && <p>The word "{word}" appears {result} times in the song.</p>}
         {error && <p className="error">{error}</p>}
       </header>
     </div>
