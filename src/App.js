@@ -35,34 +35,31 @@ function App() {
       console.log('fetchSongLyrics - Parsed song title:', songTitle); // Log the parsed song title
       const songId = await fetchSongId(songTitle);
       console.log('fetchSongLyrics - Extracted song ID:', songId);
-
+  
       const response = await axios.get(`https://lyricmetrproxy.onrender.com/songs/${songId}`);
       console.log('fetchSongLyrics - Proxy API response:', response);
-
+  
       const songPath = response.data.response.song.path;
       console.log('fetchSongLyrics - Song path:', songPath);
       const lyricsPageResponse = await axios.get(`https://lyricmetrproxy.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
       console.log('fetchSongLyrics - Lyrics page response:', lyricsPageResponse);
-
+  
       const parser = new DOMParser();
       const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
       console.log('fetchSongLyrics - Parsed HTML document:', doc);
-
-      // Extracting lyrics from the HTML
-      let lyricsElement = doc.querySelector('.lyrics');
-      if (!lyricsElement) {
-        lyricsElement = doc.querySelector('.Lyrics__Container');
-      }
+  
+      // Try different selectors to find the lyrics element
+      let lyricsElement = doc.querySelector('.lyrics') || doc.querySelector('.Lyrics__Container') || doc.querySelector('[class*="Lyrics__Container"]');
       console.log('fetchSongLyrics - Lyrics element:', lyricsElement);
-
+  
       // Handle case if lyrics are still not found
       if (!lyricsElement) {
         throw new Error('Lyrics element not found');
       }
-
+  
       const lyrics = lyricsElement ? lyricsElement.innerText : '';
       console.log('fetchSongLyrics - Extracted lyrics:', lyrics);
-
+  
       const count = countOccurrences(lyrics, word);
       console.log(`fetchSongLyrics - The word "${word}" appears ${count} times in the song.`);
       setResult(count);
@@ -75,6 +72,7 @@ function App() {
       setIsLoading(false);
     }
   };
+  
 
   const countOccurrences = (text, searchTerm) => {
     console.log(`countOccurrences - Counting occurrences of the word "${searchTerm}"`);
