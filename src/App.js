@@ -7,17 +7,23 @@ function App() {
   const [songUrl, setSongUrl] = useState('');
   const [result, setResult] = useState(null);
   const [songDetails, setSongDetails] = useState(null);
+  const [error, setError] = useState('');
 
   const fetchSongLyrics = async () => {
+    setError('');
     try {
       // Extract the song ID from the provided URL
       const songId = songUrl.split('-').pop();
+      console.log(`Extracted song ID: ${songId}`);
+
       // Fetch song details from Genius API
       const response = await axios.get(`https://api.genius.com/songs/${songId}`, {
         headers: {
           Authorization: `Bearer ${process.env.REACT_APP_GENIUS_ACCESS_TOKEN}`
         }
       });
+
+      console.log('Genius API response:', response);
 
       // Extract the song path from the response
       const songPath = response.data.response.song.path;
@@ -38,6 +44,7 @@ function App() {
       setSongDetails(response.data.response.song);
     } catch (error) {
       console.error('Error fetching data from Genius API', error);
+      setError('Error fetching song data');
       setResult('Error fetching song data');
     }
   };
@@ -73,6 +80,7 @@ function App() {
           <button onClick={fetchSongLyrics}>Fetch</button>
         </div>
         {result && <p>The word "{word}" appears {result} times in the song.</p>}
+        {error && <p className="error">{error}</p>}
       </header>
     </div>
   );
