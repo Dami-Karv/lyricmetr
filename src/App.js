@@ -9,14 +9,21 @@ function App() {
   const [songDetails, setSongDetails] = useState(null);
   const [error, setError] = useState('');
 
+  const extractSongId = (url) => {
+    const regex = /genius\.com\/.*-(\d+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
   const fetchSongLyrics = async () => {
     setError('');
     try {
-      // Extract the song ID from the provided URL
-      const songId = songUrl.split('-').pop();
+      const songId = extractSongId(songUrl);
+      if (!songId) {
+        throw new Error('Invalid Genius song URL');
+      }
       console.log(`Extracted song ID: ${songId}`);
 
-      // Fetch song details from Genius API
       const response = await axios.get(`https://api.genius.com/songs/${songId}`, {
         headers: {
           Authorization: `Bearer ${process.env.REACT_APP_GENIUS_ACCESS_TOKEN}`
@@ -25,22 +32,16 @@ function App() {
 
       console.log('Genius API response:', response);
 
-      // Extract the song path from the response
       const songPath = response.data.response.song.path;
-      // Fetch the song page HTML
       const lyricsPageResponse = await axios.get(`https://genius.com${songPath}`);
 
-      // Use DOMParser to extract lyrics from the HTML
       const parser = new DOMParser();
       const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
-      const lyricsElement = doc.querySelector('.lyrics') || doc.querySelector('.Lyrics__Container'); // Adapt as necessary
+      const lyricsElement = doc.querySelector('.lyrics') || doc.querySelector('.Lyrics__Container');
       const lyrics = lyricsElement ? lyricsElement.innerText : '';
 
-      // Count the occurrences of the word in the lyrics
       const count = countOccurrences(lyrics, word);
       setResult(count);
-      
-      // Set the song details
       setSongDetails(response.data.response.song);
     } catch (error) {
       console.error('Error fetching data from Genius API', error);
