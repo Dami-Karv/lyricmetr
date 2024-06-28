@@ -10,14 +10,9 @@ function App() {
   const [error, setError] = useState('');
 
   const extractSongId = (url) => {
-    try {
-      const parsedUrl = new URL(url);
-      const pathSegments = parsedUrl.pathname.split('-');
-      return pathSegments[pathSegments.length - 1];
-    } catch (error) {
-      console.error('Invalid URL format:', error);
-      return null;
-    }
+    const regex = /genius\.com\/.*-(\d+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
   };
 
   const fetchSongLyrics = async () => {
