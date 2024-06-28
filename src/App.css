@@ -56,3 +56,18 @@ button:hover {
   max-width: 100%;
 }
 
+.song-details {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.song-details img {
+  max-width: 150px;
+  border-radius: 5px;
+}
+
+.song-details p {
+  margin: 10px 0 0;
+  font-size: 1.2em;
+  color: #61dafb;
+}

@@ -6,6 +6,7 @@ function App() {
   const [word, setWord] = useState('');
   const [songUrl, setSongUrl] = useState('');
   const [result, setResult] = useState(null);
+  const [songDetails, setSongDetails] = useState(null);
 
   const fetchSongLyrics = async () => {
     try {
@@ -32,6 +33,9 @@ function App() {
       // Count the occurrences of the word in the lyrics
       const count = countOccurrences(lyrics, word);
       setResult(count);
+      
+      // Set the song details
+      setSongDetails(response.data.response.song);
     } catch (error) {
       console.error('Error fetching data from Genius API', error);
       setResult('Error fetching song data');
@@ -47,6 +51,12 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Lyricmetr</h1>
+        {songDetails && (
+          <div className="song-details">
+            <img src={songDetails.song_art_image_thumbnail_url} alt="Album Cover" />
+            <p>{songDetails.full_title}</p>
+          </div>
+        )}
         <div className="button-container">
           <input
             type="text"
