@@ -66,29 +66,39 @@ function App() {
     return matches.length;
   };
 
+  const fetchArtistId = async (artistName) => {
+    try {
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
+        params: { q: artistName }
+      });
+      const artist = response.data.response.hits[0].result.primary_artist;
+      return artist.id;
+    } catch (error) {
+      console.error('Error fetching artist ID from Genius API', error);
+      throw new Error('Error fetching artist ID');
+    }
+  };
+
   const fetchAlbumSongs = async () => {
     setIsLoading(true);
     setError('');
     try {
-      console.log(`fetchAlbumSongs - Searching for album with name: ${albumName}`);
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
-        params: { q: albumName }
-      });
-      console.log(`fetchAlbumSongs - API Response:`, response);
-  
-      // Check if the response contains hits
-      if (response.data.response.hits.length === 0) {
-        throw new Error('No results found for the album name provided');
+      const artistId = await fetchArtistId('Kendrick Lamar');
+      console.log(`fetchAlbumSongs - Found artist ID: ${artistId}`);
+
+      const albumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
+      const albums = albumsResponse.data.response.albums;
+      const album = albums.find(album => album.name.toLowerCase() === albumName.toLowerCase());
+
+      if (!album) {
+        throw new Error('Album not found');
       }
-  
-      const album = response.data.response.hits[0].result;
+
       const albumId = album.id;
-      console.log(`fetchAlbumSongs - Found album: ${album.full_title} with ID: ${albumId}`);
-  
-      const albumResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}`);
-      console.log('fetchAlbumSongs - Album API response:', albumResponse);
-  
-      const songs = albumResponse.data.response.album.tracks.map(track => track.song);
+      console.log(`fetchAlbumSongs - Found album ID: ${albumId}`);
+
+      const albumResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
+      const songs = albumResponse.data.response.tracks.map(track => track.song);
       console.log('fetchAlbumSongs - Songs in the album:', songs);
       setAlbumSongs(songs);
     } catch (error) {
@@ -98,7 +108,6 @@ function App() {
       setIsLoading(false);
     }
   };
-  
 
   return (
     <div className="App">
