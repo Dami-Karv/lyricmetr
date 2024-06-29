@@ -1,3 +1,5 @@
+// App.js
+
 import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
@@ -7,8 +9,9 @@ function App() {
   const [songUrl, setSongUrl] = useState('');
   const [result, setResult] = useState(null);
   const [songDetails, setSongDetails] = useState(null);
-  const [albumName, setAlbumName] = useState('');
-  const [albumSongs, setAlbumSongs] = useState([]);
+  const [artistName, setArtistName] = useState('');
+  const [albums, setAlbums] = useState([]);
+  const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeButton, setActiveButton] = useState('');
@@ -66,51 +69,28 @@ function App() {
     return matches.length;
   };
 
-  const fetchArtistId = async (query) => {
-    try {
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
-        params: { q: query }
-      });
-      if (response.data.response.hits.length === 0) {
-        throw new Error('No artist found');
-      }
-      const artist = response.data.response.hits[0].result.primary_artist;
-      if (!artist) {
-        throw new Error('Artist not found in the search results');
-      }
-      return artist.id;
-    } catch (error) {
-      console.error('Error fetching artist ID from Genius API', error);
-      throw new Error('Error fetching artist ID');
-    }
-  };
-
-  const fetchAlbumSongs = async () => {
+  const fetchArtistAlbums = async () => {
     setIsLoading(true);
     setError('');
     try {
-      const artistQuery = albumName.split(' ')[0];
-      const artistId = await fetchArtistId(artistQuery);
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
+        params: { q: artistName }
+      });
+      const artist = response.data.response.hits[0].result.primary_artist;
+      const artistId = artist.id;
 
-      const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
-      const albums = artistAlbumsResponse.data.response.albums;
-
-      const album = albums.find(a => a.name.toLowerCase().includes(albumName.toLowerCase()));
-      if (!album) {
-        throw new Error('Album not found');
-      }
-
-      const albumId = album.id;
-      const albumTracksResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
-      const songs = albumTracksResponse.data.response.tracks.map(track => track.song);
-
-      setAlbumSongs(songs);
+      const albumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
+      setAlbums(albumsResponse.data.response.albums);
     } catch (error) {
-      console.error('Error fetching album data from Genius API', error);
-      setError('Error fetching album data: ' + error.message);
+      console.error('Error fetching artist albums from Genius API', error);
+      setError('Error fetching artist albums');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAlbumClick = (album) => {
+    setSelectedAlbum(album);
   };
 
   return (
@@ -120,7 +100,7 @@ function App() {
         <div className="button-container">
           <button onClick={() => setActiveButton('countWord')}>Count Word in Song</button>
           <button onClick={() => setActiveButton('listSongs')}>List Songs in Album</button>
-          <button>Button 3</button> {/* Placeholder for future functionality */}
+          <button onClick={() => setActiveButton('fetchAlbums')}>Fetch Artist Albums</button>
         </div>
         {activeButton === 'countWord' && (
           <div className="input-container">
@@ -139,15 +119,15 @@ function App() {
             <button onClick={fetchSongLyrics}>Fetch</button>
           </div>
         )}
-        {activeButton === 'listSongs' && (
+        {activeButton === 'fetchAlbums' && (
           <div className="input-container">
             <input
               type="text"
-              placeholder="Enter album name"
-              value={albumName}
-              onChange={(e) => setAlbumName(e.target.value)}
+              placeholder="Enter artist name"
+              value={artistName}
+              onChange={(e) => setArtistName(e.target.value)}
             />
-            <button onClick={fetchAlbumSongs}>Fetch Album Songs</button>
+            <button onClick={fetchArtistAlbums}>Fetch Albums</button>
           </div>
         )}
         {isLoading && <p>Loading...</p>}
@@ -158,14 +138,22 @@ function App() {
             <p>{songDetails.full_title}</p>
           </div>
         )}
-        {albumSongs.length > 0 && (
-          <div className="album-songs">
-            <h2>Songs in Album:</h2>
+        {albums.length > 0 && (
+          <div className="album-list">
+            <h2>Albums:</h2>
             <ul>
-              {albumSongs.map(song => (
-                <li key={song.id}>{song.full_title}</li>
+              {albums.map(album => (
+                <li key={album.id} onClick={() => handleAlbumClick(album)}>
+                  {album.name}
+                </li>
               ))}
             </ul>
+          </div>
+        )}
+        {selectedAlbum && (
+          <div className="album-details">
+            <h3>{selectedAlbum.name}</h3>
+            <img src={selectedAlbum.cover_art_url} alt="Album Cover" />
           </div>
         )}
         {error && <p className="error">{error}</p>}
