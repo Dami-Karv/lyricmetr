@@ -71,15 +71,24 @@ function App() {
     setError('');
     try {
       // Search for a known song from the album "DAMN."
+      console.log(`fetchAlbumSongs - Searching for song from album: ${albumName}`);
       const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
         params: { q: `Kendrick Lamar HUMBLE` }
       });
+      console.log(`fetchAlbumSongs - API Response:`, response);
 
+      // Check if the response contains hits
       if (response.data.response.hits.length === 0) {
         throw new Error('No results found for the album name provided');
       }
 
       const song = response.data.response.hits[0].result;
+      console.log(`fetchAlbumSongs - Found song:`, song);
+
+      if (!song.album) {
+        throw new Error('Album information is not available for this song');
+      }
+
       const albumId = song.album.id;
       console.log(`fetchAlbumSongs - Found album ID: ${albumId}`);
 
