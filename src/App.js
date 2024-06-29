@@ -71,7 +71,13 @@ function App() {
       const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
         params: { q: query }
       });
+      if (response.data.response.hits.length === 0) {
+        throw new Error('No artist found');
+      }
       const artist = response.data.response.hits[0].result.primary_artist;
+      if (!artist) {
+        throw new Error('Artist not found in the search results');
+      }
       return artist.id;
     } catch (error) {
       console.error('Error fetching artist ID from Genius API', error);
