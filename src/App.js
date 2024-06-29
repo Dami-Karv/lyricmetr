@@ -66,38 +66,27 @@ function App() {
     return matches.length;
   };
 
-  const fetchArtistId = async (artistName) => {
-    try {
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
-        params: { q: artistName }
-      });
-      const artist = response.data.response.hits[0].result.primary_artist;
-      return artist.id;
-    } catch (error) {
-      console.error('Error fetching artist ID from Genius API', error);
-      throw new Error('Error fetching artist ID');
-    }
-  };
-
   const fetchAlbumSongs = async () => {
     setIsLoading(true);
     setError('');
     try {
-      const artistId = await fetchArtistId('Kendrick Lamar');
-      console.log(`fetchAlbumSongs - Found artist ID: ${artistId}`);
+      // Search for a known song from the album "DAMN."
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
+        params: { q: `Kendrick Lamar HUMBLE` }
+      });
 
-      const albumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
-      const albums = albumsResponse.data.response.albums;
-      const album = albums.find(album => album.name.toLowerCase() === albumName.toLowerCase());
-
-      if (!album) {
-        throw new Error('Album not found');
+      if (response.data.response.hits.length === 0) {
+        throw new Error('No results found for the album name provided');
       }
 
-      const albumId = album.id;
+      const song = response.data.response.hits[0].result;
+      const albumId = song.album.id;
       console.log(`fetchAlbumSongs - Found album ID: ${albumId}`);
 
+      // Fetch album tracks using album ID
       const albumResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
+      console.log('fetchAlbumSongs - Album API response:', albumResponse);
+
       const songs = albumResponse.data.response.tracks.map(track => track.song);
       console.log('fetchAlbumSongs - Songs in the album:', songs);
       setAlbumSongs(songs);
