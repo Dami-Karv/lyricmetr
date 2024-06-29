@@ -70,10 +70,11 @@ function App() {
     setIsLoading(true);
     setError('');
     try {
-      // Search for the album
-      console.log(`fetchAlbumSongs - Searching for album: ${albumName}`);
+      // Search for the album using a more refined query
+      const query = albumName.includes('https://') ? albumName.split('/').slice(-1)[0] : albumName;
+      console.log(`fetchAlbumSongs - Searching for album: ${query}`);
       const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
-        params: { q: albumName }
+        params: { q: query }
       });
       console.log(`fetchAlbumSongs - API Response:`, response);
   
@@ -83,7 +84,7 @@ function App() {
       }
   
       // Attempt to find the album in the search results
-      const hit = response.data.response.hits.find(hit => hit.type === 'album');
+      const hit = response.data.response.hits.find(hit => hit.type === 'album' || hit.result.full_title.toLowerCase().includes(query.toLowerCase()));
       if (!hit) {
         throw new Error('Album information is not available in the search results');
       }
@@ -108,6 +109,7 @@ function App() {
       setIsLoading(false);
     }
   };
+  
   
 
   return (
