@@ -66,41 +66,38 @@ function App() {
     return matches.length;
   };
 
+  const fetchArtistId = async (query) => {
+    try {
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
+        params: { q: query }
+      });
+      const artist = response.data.response.hits[0].result.primary_artist;
+      return artist.id;
+    } catch (error) {
+      console.error('Error fetching artist ID from Genius API', error);
+      throw new Error('Error fetching artist ID');
+    }
+  };
+
   const fetchAlbumSongs = async () => {
     setIsLoading(true);
     setError('');
     try {
-      // Search for the album using a more refined query
-      const query = albumName.includes('https://') ? albumName.split('/').slice(-1)[0] : albumName;
-      console.log(`fetchAlbumSongs - Searching for album: ${query}`);
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
-        params: { q: query }
-      });
-      console.log(`fetchAlbumSongs - API Response:`, response);
-  
-      // Check if the response contains hits
-      if (response.data.response.hits.length === 0) {
-        throw new Error('No results found for the album name provided');
+      const artistQuery = albumName.split(' ')[0];
+      const artistId = await fetchArtistId(artistQuery);
+
+      const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
+      const albums = artistAlbumsResponse.data.response.albums;
+
+      const album = albums.find(a => a.name.toLowerCase().includes(albumName.toLowerCase()));
+      if (!album) {
+        throw new Error('Album not found');
       }
-  
-      // Attempt to find the album in the search results
-      const hit = response.data.response.hits.find(hit => hit.type === 'album' || hit.result.full_title.toLowerCase().includes(query.toLowerCase()));
-      if (!hit) {
-        throw new Error('Album information is not available in the search results');
-      }
-  
-      const album = hit.result;
-      console.log(`fetchAlbumSongs - Found album:`, album);
-  
+
       const albumId = album.id;
-      console.log(`fetchAlbumSongs - Found album ID: ${albumId}`);
-  
-      // Fetch album tracks using album ID
-      const albumResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
-      console.log('fetchAlbumSongs - Album API response:', albumResponse);
-  
-      const songs = albumResponse.data.response.tracks.map(track => track.song);
-      console.log('fetchAlbumSongs - Songs in the album:', songs);
+      const albumTracksResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
+      const songs = albumTracksResponse.data.response.tracks.map(track => track.song);
+
       setAlbumSongs(songs);
     } catch (error) {
       console.error('Error fetching album data from Genius API', error);
@@ -109,8 +106,6 @@ function App() {
       setIsLoading(false);
     }
   };
-  
-  
 
   return (
     <div className="App">
