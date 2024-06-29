@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -15,6 +15,17 @@ function App() {
   const [artistName, setArtistName] = useState('');
   const [artistAlbums, setArtistAlbums] = useState([]);
   const [selectedAlbumCover, setSelectedAlbumCover] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+      document.body.classList.remove('light-mode');
+    } else {
+      document.body.classList.add('light-mode');
+      document.body.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
 
   const fetchSongId = async (query) => {
     try {
@@ -232,6 +243,12 @@ function App() {
         )}
         {error && <p className="error">{error}</p>}
       </header>
+      <div className="toggle-switch">
+        <label className="switch">
+          <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
+          <span className="slider"></span>
+        </label>
+      </div>
     </div>
   );
 }
