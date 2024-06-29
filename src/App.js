@@ -70,32 +70,34 @@ function App() {
     setIsLoading(true);
     setError('');
     try {
-      // Search for a known song from the album "DAMN."
-      console.log(`fetchAlbumSongs - Searching for song from album: ${albumName}`);
+      // Search for the album
+      console.log(`fetchAlbumSongs - Searching for album: ${albumName}`);
       const response = await axios.get(`https://lyricmetrproxy.onrender.com/search`, {
-        params: { q: `Kendrick Lamar HUMBLE` }
+        params: { q: albumName }
       });
       console.log(`fetchAlbumSongs - API Response:`, response);
-
+  
       // Check if the response contains hits
       if (response.data.response.hits.length === 0) {
         throw new Error('No results found for the album name provided');
       }
-
-      const song = response.data.response.hits[0].result;
-      console.log(`fetchAlbumSongs - Found song:`, song);
-
-      if (!song.album) {
-        throw new Error('Album information is not available for this song');
+  
+      // Attempt to find the album in the search results
+      const hit = response.data.response.hits.find(hit => hit.type === 'album');
+      if (!hit) {
+        throw new Error('Album information is not available in the search results');
       }
-
-      const albumId = song.album.id;
+  
+      const album = hit.result;
+      console.log(`fetchAlbumSongs - Found album:`, album);
+  
+      const albumId = album.id;
       console.log(`fetchAlbumSongs - Found album ID: ${albumId}`);
-
+  
       // Fetch album tracks using album ID
       const albumResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
       console.log('fetchAlbumSongs - Album API response:', albumResponse);
-
+  
       const songs = albumResponse.data.response.tracks.map(track => track.song);
       console.log('fetchAlbumSongs - Songs in the album:', songs);
       setAlbumSongs(songs);
@@ -106,6 +108,7 @@ function App() {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className="App">
