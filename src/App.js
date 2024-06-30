@@ -21,7 +21,7 @@ function App() {
       const response = await axios.get('https://lyricmetrproxy.onrender.com/search', {
         params: { q: query }
       });
-      const song = response.data.response.hits[0].result;
+      const song = response.data[0];
       return song.id;
     } catch (error) {
       console.error('Error fetching song ID from Genius API', error);
@@ -37,23 +37,14 @@ function App() {
       const songId = await fetchSongId(songTitle);
 
       const response = await axios.get(`https://lyricmetrproxy.onrender.com/songs/${songId}`);
-      const songPath = response.data.response.song.path;
+      const songPath = response.data.url;
 
-      const lyricsPageResponse = await axios.get(`https://lyricmetrproxy.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(lyricsPageResponse.data, 'text/html');
-      let lyricsElement = doc.querySelector('.lyrics') || doc.querySelector('.Lyrics__Container') || doc.querySelector('[class*="Lyrics__Container"]');
-
-      if (!lyricsElement) {
-        throw new Error('Lyrics element not found');
-      }
-
-      const lyrics = lyricsElement ? lyricsElement.innerText : '';
+      const lyricsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
+      const lyrics = lyricsResponse.data;
       const count = countOccurrences(lyrics, word);
 
       setResult(count);
-      setSongDetails(response.data.response.song);
+      setSongDetails(response.data);
     } catch (error) {
       console.error('Error fetching data from Genius API', error);
       setError('Error fetching song data');
@@ -74,10 +65,10 @@ function App() {
       const response = await axios.get('https://lyricmetrproxy.onrender.com/search', {
         params: { q: query }
       });
-      if (response.data.response.hits.length === 0) {
+      if (response.data.length === 0) {
         throw new Error('No artist found');
       }
-      const artist = response.data.response.hits[0].result.primary_artist;
+      const artist = response.data[0];
       if (!artist) {
         throw new Error('Artist not found in the search results');
       }
@@ -96,7 +87,7 @@ function App() {
       const artistId = await fetchArtistId(artistQuery);
 
       const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
-      const albums = artistAlbumsResponse.data.response.albums;
+      const albums = artistAlbumsResponse.data;
 
       const album = albums.find(a => a.name.toLowerCase().includes(albumName.toLowerCase()));
       if (!album) {
@@ -105,7 +96,7 @@ function App() {
 
       const albumId = album.id;
       const albumTracksResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
-      const songs = albumTracksResponse.data.response.tracks.map(track => track.song);
+      const songs = albumTracksResponse.data;
 
       setAlbumSongs(songs);
     } catch (error) {
@@ -123,7 +114,7 @@ function App() {
       const artistId = await fetchArtistId(artistName);
 
       const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
-      const albums = artistAlbumsResponse.data.response.albums;
+      const albums = artistAlbumsResponse.data;
 
       setArtistAlbums(albums);
     } catch (error) {
@@ -139,7 +130,7 @@ function App() {
     setError('');
     try {
       const albumResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}`);
-      setSelectedAlbumCover(albumResponse.data.response.album.cover_art_url);
+      setSelectedAlbumCover(albumResponse.data.albumArt);
     } catch (error) {
       console.error('Error fetching album cover from Genius API', error);
       setError('Error fetching album cover: ' + error.message);
@@ -200,8 +191,8 @@ function App() {
         {result && !error && <p>The word "{word}" appears {result} times in the song.</p>}
         {songDetails && (
           <div className="song-details">
-            <img src={songDetails.song_art_image_thumbnail_url} alt="Album Cover" />
-            <p>{songDetails.full_title}</p>
+            <img src={songDetails.albumArt} alt="Album Cover" />
+            <p>{songDetails.title}</p>
           </div>
         )}
         {albumSongs.length > 0 && (
@@ -209,7 +200,7 @@ function App() {
             <h2>Songs in Album:</h2>
             <ul>
               {albumSongs.map(song => (
-                <li key={song.id}>{song.full_title}</li>
+                <li key={song.id}>{song.title}</li>
               ))}
             </ul>
           </div>
