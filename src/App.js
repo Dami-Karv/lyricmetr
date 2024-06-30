@@ -7,16 +7,14 @@ function App() {
   const [songUrl, setSongUrl] = useState('');
   const [result, setResult] = useState(null);
   const [songDetails, setSongDetails] = useState(null);
-  const [albumName, setAlbumName] = useState('');
-  const [albumSongs, setAlbumSongs] = useState([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeButton, setActiveButton] = useState('');
   const [artistName, setArtistName] = useState('');
-  const [artistAlbums, setArtistAlbums] = useState([]);
-  const [selectedAlbumCover, setSelectedAlbumCover] = useState(null);
   const [artistsList, setArtistsList] = useState([]);
   const [selectedArtistId, setSelectedArtistId] = useState(null);
+  const [startYear, setStartYear] = useState(2000);
+  const [endYear, setEndYear] = useState(2020);
 
   const fetchSongId = async (query) => {
     try {
@@ -77,58 +75,17 @@ function App() {
     }
   };
 
-  const fetchAlbumSongs = async () => {
+  const fetchArtistSongsByYear = async (artistId, startYear, endYear, word) => {
     setIsLoading(true);
     setError('');
     try {
-      const artistId = await fetchArtistId(albumName.split(' ')[0]);
-
-      const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
-      const albums = artistAlbumsResponse.data;
-
-      const album = albums.find(a => a.name.toLowerCase().includes(albumName.toLowerCase()));
-      if (!album) {
-        throw new Error('Album not found');
-      }
-
-      const albumId = album.id;
-      const albumTracksResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}/tracks`);
-      const songs = albumTracksResponse.data;
-
-      setAlbumSongs(songs);
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artist-songs`, {
+        params: { artistId, startYear, endYear, word }
+      });
+      setResult(response.data);
     } catch (error) {
-      console.error('Error fetching album data from Genius API', error);
-      setError('Error fetching album data: ' + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchArtistAlbums = async (artistId) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
-      const albums = artistAlbumsResponse.data;
-
-      setArtistAlbums(albums);
-    } catch (error) {
-      console.error('Error fetching artist albums from Genius API', error);
-      setError('Error fetching artist albums: ' + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAlbumClick = async (albumId) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const albumResponse = await axios.get(`https://lyricmetrproxy.onrender.com/albums/${albumId}`);
-      setSelectedAlbumCover(albumResponse.data.albumArt);
-    } catch (error) {
-      console.error('Error fetching album cover from Genius API', error);
-      setError('Error fetching album cover: ' + error.message);
+      console.error('Error fetching songs by year from Genius API', error);
+      setError('Error fetching songs by year: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +93,6 @@ function App() {
 
   const handleArtistSelection = async (artistId) => {
     setSelectedArtistId(artistId);
-    await fetchArtistAlbums(artistId);
   };
 
   const searchArtists = async () => {
@@ -153,15 +109,21 @@ function App() {
     }
   };
 
+  const fetchWordFrequency = () => {
+    if (selectedArtistId && word) {
+      fetchArtistSongsByYear(selectedArtistId, startYear, endYear, word);
+    } else {
+      setError('Please select an artist and enter a word.');
+    }
+  };
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>Lyricmetr</h1>
         <div className="button-container">
           <button onClick={() => setActiveButton('countWord')}>Count Word in Song</button>
-          <button onClick={() => setActiveButton('listSongs')}>List Songs in Album</button>
-          <button onClick={() => setActiveButton('listAlbums')}>List Albums by Artist</button>
-          <button onClick={() => setActiveButton('listAlbumsByArtist')}>List Albums by Artist</button>
+          <button onClick={() => setActiveButton('wordFrequency')}>Word Frequency by Year</button>
         </div>
         {activeButton === 'countWord' && (
           <div className="input-container">
@@ -180,29 +142,7 @@ function App() {
             <button onClick={fetchSongLyrics}>Fetch</button>
           </div>
         )}
-        {activeButton === 'listSongs' && (
-          <div className="input-container">
-            <input
-              type="text"
-              placeholder="Enter album name"
-              value={albumName}
-              onChange={(e) => setAlbumName(e.target.value)}
-            />
-            <button onClick={fetchAlbumSongs}>Fetch Album Songs</button>
-          </div>
-        )}
-        {activeButton === 'listAlbums' && (
-          <div className="input-container">
-            <input
-              type="text"
-              placeholder="Enter artist name"
-              value={artistName}
-              onChange={(e) => setArtistName(e.target.value)}
-            />
-            <button onClick={fetchArtistAlbums}>Fetch Artist Albums</button>
-          </div>
-        )}
-        {activeButton === 'listAlbumsByArtist' && (
+        {activeButton === 'wordFrequency' && (
           <div className="input-container">
             <input
               type="text"
@@ -211,50 +151,53 @@ function App() {
               onChange={(e) => setArtistName(e.target.value)}
             />
             <button onClick={searchArtists}>Search Artists</button>
+            {artistsList.length > 0 && (
+              <div className="artist-list">
+                <h2>Select an Artist:</h2>
+                <ul>
+                  {artistsList.map(artist => (
+                    <li key={artist.id} onClick={() => handleArtistSelection(artist.id)}>{artist.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {selectedArtistId && (
+              <div className="year-slider">
+                <h2>Select Year Range</h2>
+                <label>Start Year: {startYear}</label>
+                <input
+                  type="range"
+                  min="1950"
+                  max="2024"
+                  value={startYear}
+                  onChange={(e) => setStartYear(e.target.value)}
+                />
+                <label>End Year: {endYear}</label>
+                <input
+                  type="range"
+                  min="1950"
+                  max="2024"
+                  value={endYear}
+                  onChange={(e) => setEndYear(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Enter word to search"
+                  value={word}
+                  onChange={(e) => setWord(e.target.value)}
+                />
+                <button onClick={fetchWordFrequency}>Fetch Word Frequency</button>
+              </div>
+            )}
           </div>
         )}
         {isLoading && <p>Loading...</p>}
-        {artistsList.length > 0 && (
-          <div className="artist-list">
-            <h2>Select an Artist:</h2>
-            <ul>
-              {artistsList.map(artist => (
-                <li key={artist.id} onClick={() => handleArtistSelection(artist.id)}>{artist.name}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {artistAlbums.length > 0 && (
-          <div className="artist-albums">
-            <h2>Albums by {artistName}:</h2>
-            <ul>
-              {artistAlbums.map(album => (
-                <li key={album.id} onClick={() => handleAlbumClick(album.id)}>{album.name}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {selectedAlbumCover && (
-          <div className="album-cover">
-            <h2>Album Cover</h2>
-            <img src={selectedAlbumCover} alt="Album Cover" />
-          </div>
-        )}
-        {result && !error && <p>The word "{word}" appears {result} times in the song.</p>}
-        {songDetails && (
-          <div className="song-details">
-            <img src={songDetails.albumArt} alt="Album Cover" />
-            <p>{songDetails.title}</p>
-          </div>
-        )}
-        {albumSongs.length > 0 && (
-          <div className="album-songs">
-            <h2>Songs in Album:</h2>
-            <ul>
-              {albumSongs.map(song => (
-                <li key={song.id}>{song.title}</li>
-              ))}
-            </ul>
+        {result && (
+          <div className="result">
+            <h2>Word Frequency by Year</h2>
+            {Object.entries(result).map(([year, frequency]) => (
+              <p key={year}>{year}: {frequency}</p>
+            ))}
           </div>
         )}
         {error && <p className="error">{error}</p>}
