@@ -16,45 +16,43 @@ function App() {
   const [artistAlbums, setArtistAlbums] = useState([]);
   const [selectedAlbumCover, setSelectedAlbumCover] = useState(null);
 
-const fetchSongId = async (query) => {
-  try {
-    const response = await axios.get('https://lyricmetrproxy.onrender.com/search', {
-      params: { q: query }
-    });
-    const song = response.data[0];
-    return song.id;
-  } catch (error) {
-    console.error('Error fetching song ID from Genius API', error);
-    throw new Error('Error fetching song ID');
-  }
-};
+  const fetchSongId = async (query) => {
+    try {
+      const response = await axios.get('https://lyricmetrproxy.onrender.com/search', {
+        params: { q: query }
+      });
+      const song = response.data[0];
+      return song.id;
+    } catch (error) {
+      console.error('Error fetching song ID from Genius API', error);
+      throw new Error('Error fetching song ID');
+    }
+  };
 
+  const fetchSongLyrics = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const songTitle = songUrl.split('genius.com/')[1].replace(/-/g, ' ').replace(' lyrics', '');
+      const songId = await fetchSongId(songTitle);
 
-const fetchSongLyrics = async () => {
-  setIsLoading(true);
-  setError('');
-  try {
-    const songTitle = songUrl.split('genius.com/')[1].replace(/-/g, ' ').replace(' lyrics', '');
-    const songId = await fetchSongId(songTitle);
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/songs/${songId}`);
+      const songPath = response.data.url;
 
-    const response = await axios.get(`https://lyricmetrproxy.onrender.com/songs/${songId}`);
-    const songPath = response.data.url;
+      const lyricsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
+      const lyrics = lyricsResponse.data;
+      const count = countOccurrences(lyrics, word);
 
-    const lyricsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
-    const lyrics = lyricsResponse.data;
-    const count = countOccurrences(lyrics, word);
-
-    setResult(count);
-    setSongDetails(response.data);
-  } catch (error) {
-    console.error('Error fetching data from Genius API', error);
-    setError('Error fetching song data');
-    setResult('Error fetching song data');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+      setResult(count);
+      setSongDetails(response.data);
+    } catch (error) {
+      console.error('Error fetching data from Genius API', error);
+      setError('Error fetching song data');
+      setResult('Error fetching song data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const countOccurrences = (text, searchTerm) => {
     const regex = new RegExp(searchTerm, 'gi');
@@ -64,7 +62,7 @@ const fetchSongLyrics = async () => {
 
   const fetchArtistId = async (query) => {
     try {
-      const response = await axios.get('https://lyricmetrproxy.onrender.com/search', {
+      const response = await axios.get('https://lyricmetrproxy.onrender.com/search-artist', {
         params: { q: query }
       });
       if (response.data.length === 0) {
@@ -85,8 +83,7 @@ const fetchSongLyrics = async () => {
     setIsLoading(true);
     setError('');
     try {
-      const artistQuery = albumName.split(' ')[0];
-      const artistId = await fetchArtistId(artistQuery);
+      const artistId = await fetchArtistId(albumName.split(' ')[0]);
 
       const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
       const albums = artistAlbumsResponse.data;
