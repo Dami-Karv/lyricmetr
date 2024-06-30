@@ -136,10 +136,35 @@ function App() {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown Date';
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? 'Unknown Date' : date.toLocaleDateString();
+  
+    // Try parsing the date in different formats
+    const formats = [
+      // ISO 8601 format
+      dateString,
+      // Year only
+      `${dateString}-01-01`,
+      // Year and month only
+      `${dateString}-01`,
+      // Unix timestamp (in milliseconds)
+      new Date(parseInt(dateString))
+    ];
+  
+    for (let format of formats) {
+      const date = new Date(format);
+      if (!isNaN(date.getTime())) {
+        // Valid date found, return it
+        return date.toLocaleDateString(undefined, { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
+    }
+  
+    // If we get here, no valid date format was found
+    console.log(`Unable to parse date: ${dateString}`);
+    return 'Unknown Date';
   };
-
   return (
     <div className="App">
       <header className="App-header">
