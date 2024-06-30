@@ -25,7 +25,7 @@ function App() {
       const song = response.data[0];
       return song.id;
     } catch (error) {
-      console.error('Error fetching song ID from Genius API', error);
+      console.error('Error Fetching song ID from Genius API ', error);
       throw new Error('Error fetching song ID');
     }
   };
@@ -112,7 +112,7 @@ function App() {
     await fetchArtistSongs(artistId);
   };
 
-  const searchArtists = async () => {
+  const searchArtists  = async () => {
     setIsLoading(true);
     setError('');
     try {
@@ -219,7 +219,7 @@ function App() {
           <div className="input-container">
             <input
               type="text"
-              placeholder="Enter artist name"
+              placeholder="Enter artist Name"
               value={artistName}
               onChange={(e) => setArtistName(e.target.value)}
             />
@@ -243,7 +243,9 @@ function App() {
                   ))}
                 </ul>
               </div>
-            )}
+            )  }
+
+
           </div>
         )}
         {isLoading && <p>Loading...</p>}
@@ -260,5 +262,8 @@ function App() {
     </div>
   );
 }
+
+
+
 
 export default App;
