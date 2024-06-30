@@ -13,6 +13,7 @@ function App() {
   const [artistName, setArtistName] = useState('');
   const [artistsList, setArtistsList] = useState([]);
   const [selectedArtistId, setSelectedArtistId] = useState(null);
+  const [artistSongs, setArtistSongs] = useState([]);
   const [startYear, setStartYear] = useState(2000);
   const [endYear, setEndYear] = useState(2020);
 
@@ -91,8 +92,23 @@ function App() {
     }
   };
 
+  const fetchArtistSongs = async (artistId) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/songs`);
+      setArtistSongs(response.data);
+    } catch (error) {
+      console.error('Error fetching artist songs from Genius API', error);
+      setError('Error fetching artist songs: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleArtistSelection = async (artistId) => {
     setSelectedArtistId(artistId);
+    await fetchArtistSongs(artistId);
   };
 
   const searchArtists = async () => {
@@ -124,6 +140,7 @@ function App() {
         <div className="button-container">
           <button onClick={() => setActiveButton('countWord')}>Count Word in Song</button>
           <button onClick={() => setActiveButton('wordFrequency')}>Word Frequency by Year</button>
+          <button onClick={() => setActiveButton('listSongsByArtist')}>List Songs by Artist</button>
         </div>
         {activeButton === 'countWord' && (
           <div className="input-container">
@@ -187,6 +204,37 @@ function App() {
                   onChange={(e) => setWord(e.target.value)}
                 />
                 <button onClick={fetchWordFrequency}>Fetch Word Frequency</button>
+              </div>
+            )}
+          </div>
+        )}
+        {activeButton === 'listSongsByArtist' && (
+          <div className="input-container">
+            <input
+              type="text"
+              placeholder="Enter artist name"
+              value={artistName}
+              onChange={(e) => setArtistName(e.target.value)}
+            />
+            <button onClick={searchArtists}>Search Artists</button>
+            {artistsList.length > 0 && (
+              <div className="artist-list">
+                <h2>Select an Artist:</h2>
+                <ul>
+                  {artistsList.map(artist => (
+                    <li key={artist.id} onClick={() => handleArtistSelection(artist.id)}>{artist.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {artistSongs.length > 0 && (
+              <div className="artist-songs">
+                <h2>Songs by {artistName}:</h2>
+                <ul>
+                  {artistSongs.map(song => (
+                    <li key={song.id}>{song.title} - {new Date(song.release_date).toLocaleDateString()}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
