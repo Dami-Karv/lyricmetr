@@ -34,22 +34,35 @@ function App() {
     setIsLoading(true);
     setError('');
     try {
+      if (!songUrl || !word) {
+        throw new Error('Please enter both a song URL and a word to search for.');
+      }
+  
       const songTitle = songUrl.split('genius.com/')[1].replace(/-/g, ' ').replace(' lyrics', '');
-      const songId = await fetchSongId(songTitle);
-
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/songs/${songId}`);
-      const songPath = response.data.url;
-
-      const lyricsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/lyrics?path=${encodeURIComponent(songPath)}`);
+      
+      // First, search for the song
+      const searchResponse = await axios.get(`/search?q=${encodeURIComponent(songTitle)}`);
+      if (!searchResponse.data || searchResponse.data.length === 0) {
+        throw new Error('Song not found');
+      }
+      
+      const songId = searchResponse.data[0].id;
+  
+      // Then, get the song details
+      const songResponse = await axios.get(`/songs/${songId}`);
+      const songPath = songResponse.data.path;
+  
+      // Finally, get the lyrics
+      const lyricsResponse = await axios.get(`/lyrics?path=${encodeURIComponent(songPath)}`);
       const lyrics = lyricsResponse.data;
+  
       const count = countOccurrences(lyrics, word);
-
+  
       setResult(count);
-      setSongDetails(response.data);
+      setSongDetails(songResponse.data);
     } catch (error) {
-      console.error('Error fetching data from Genius API', error);
-      setError('Error fetching song data');
-      setResult('Error fetching song data');
+      console.error('Error fetching song data:', error);
+      setError(error.message || 'Error fetching song data');
     } finally {
       setIsLoading(false);
     }
