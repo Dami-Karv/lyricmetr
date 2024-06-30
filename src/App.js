@@ -17,7 +17,6 @@ function App() {
   const [selectedAlbumCover, setSelectedAlbumCover] = useState(null);
   const [artistsList, setArtistsList] = useState([]);
   const [selectedArtistId, setSelectedArtistId] = useState(null);
-  const [artistSongs, setArtistSongs] = useState([]);
 
   const fetchSongId = async (query) => {
     try {
@@ -105,12 +104,10 @@ function App() {
     }
   };
 
-  const fetchArtistAlbums = async () => {
+  const fetchArtistAlbums = async (artistId) => {
     setIsLoading(true);
     setError('');
     try {
-      const artistId = await fetchArtistId(artistName);
-
       const artistAlbumsResponse = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/albums`);
       const albums = artistAlbumsResponse.data;
 
@@ -137,23 +134,9 @@ function App() {
     }
   };
 
-  const fetchArtistSongs = async (artistId) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/songs`);
-      setArtistSongs(response.data);
-    } catch (error) {
-      console.error('Error fetching artist songs from Genius API', error);
-      setError('Error fetching artist songs: ' + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleArtistSelection = async (artistId) => {
     setSelectedArtistId(artistId);
-    await fetchArtistSongs(artistId);
+    await fetchArtistAlbums(artistId);
   };
 
   const searchArtists = async () => {
@@ -178,7 +161,7 @@ function App() {
           <button onClick={() => setActiveButton('countWord')}>Count Word in Song</button>
           <button onClick={() => setActiveButton('listSongs')}>List Songs in Album</button>
           <button onClick={() => setActiveButton('listAlbums')}>List Albums by Artist</button>
-          <button onClick={() => setActiveButton('listSongsByArtist')}>List Songs by Artist</button>
+          <button onClick={() => setActiveButton('listAlbumsByArtist')}>List Albums by Artist</button>
         </div>
         {activeButton === 'countWord' && (
           <div className="input-container">
@@ -219,7 +202,7 @@ function App() {
             <button onClick={fetchArtistAlbums}>Fetch Artist Albums</button>
           </div>
         )}
-        {activeButton === 'listSongsByArtist' && (
+        {activeButton === 'listAlbumsByArtist' && (
           <div className="input-container">
             <input
               type="text"
@@ -241,14 +224,20 @@ function App() {
             </ul>
           </div>
         )}
-        {artistSongs.length > 0 && (
-          <div className="artist-songs">
-            <h2>Songs by {artistName}:</h2>
+        {artistAlbums.length > 0 && (
+          <div className="artist-albums">
+            <h2>Albums by {artistName}:</h2>
             <ul>
-              {artistSongs.map(song => (
-                <li key={song.id}>{song.title}</li>
+              {artistAlbums.map(album => (
+                <li key={album.id} onClick={() => handleAlbumClick(album.id)}>{album.name}</li>
               ))}
             </ul>
+          </div>
+        )}
+        {selectedAlbumCover && (
+          <div className="album-cover">
+            <h2>Album Cover</h2>
+            <img src={selectedAlbumCover} alt="Album Cover" />
           </div>
         )}
         {result && !error && <p>The word "{word}" appears {result} times in the song.</p>}
@@ -266,22 +255,6 @@ function App() {
                 <li key={song.id}>{song.title}</li>
               ))}
             </ul>
-          </div>
-        )}
-        {artistAlbums.length > 0 && (
-          <div className="artist-albums">
-            <h2>Albums by {artistName}:</h2>
-            <ul>
-              {artistAlbums.map(album => (
-                <li key={album.id} onClick={() => handleAlbumClick(album.id)}>{album.name}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {selectedAlbumCover && (
-          <div className="album-cover">
-            <h2>Album Cover</h2>
-            <img src={selectedAlbumCover} alt="Album Cover" />
           </div>
         )}
         {error && <p className="error">{error}</p>}
