@@ -134,6 +134,12 @@ function App() {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown Date';
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? 'Unknown Date' : date.toLocaleDateString();
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -233,7 +239,7 @@ function App() {
                 <h2>Songs by {artistsList.find(artist => artist.id === selectedArtistId)?.name}:</h2>
                 <ul>
                   {artistSongs.map(song => (
-                    <li key={song.id}>{song.title} - {new Date(song.release_date).toLocaleDateString()}</li>
+                    <li key={song.id}>{song.title} - {formatDate(song.release_date)}</li>
                   ))}
                 </ul>
               </div>
