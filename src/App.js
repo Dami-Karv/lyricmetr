@@ -134,37 +134,18 @@ function App() {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown Date';
-  
-    // Try parsing the date in different formats
-    const formats = [
-      // ISO 8601 format
-      dateString,
-      // Year only
-      `${dateString}-01-01`,
-      // Year and month only
-      `${dateString}-01`,
-      // Unix timestamp (in milliseconds)
-      new Date(parseInt(dateString))
-    ];
-  
-    for (let format of formats) {
-      const date = new Date(format);
-      if (!isNaN(date.getTime())) {
-        // Valid date found, return it
-        return date.toLocaleDateString(undefined, { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        });
-      }
-    }
-  
-    // If we get here, no valid date format was found
-    console.log(`Unable to parse date: ${dateString}`);
-    return 'Unknown Date';
+  const formatDate = (dateComponents) => {
+    if (!dateComponents) return 'Unknown Date';
+    const { year, month, day } = dateComponents;
+    if (!year || !month || !day) return 'Unknown Date';
+    return new Date(year, month - 1, day).toLocaleDateString(undefined, { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
+
+  
   return (
     <div className="App">
       <header className="App-header">
@@ -260,15 +241,18 @@ function App() {
               </div>
             )}
             {artistSongs.length > 0 && (
-              <div className="artist-songs">
-                <h2>Songs by {artistsList.find(artist => artist.id === selectedArtistId)?.name}:</h2>
-                <ul>
-                  {artistSongs.map(song => (
-                    <li key={song.id}>{song.title} - {formatDate(song.release_date)}</li>
-                  ))}
-                </ul>
-              </div>
-            )  }
+  <div className="artist-songs">
+    <h2>Songs by {artistsList.find(artist => artist.id === selectedArtistId)?.name}:</h2>
+    <ul>
+      {artistSongs.map(song => (
+        <li key={song.id}>
+          {song.title} - {formatDate(song.release_date_components)}
+          (Raw: {song.release_date_for_display})
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
 
 
           </div>
