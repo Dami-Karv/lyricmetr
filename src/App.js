@@ -97,7 +97,8 @@ function App() {
     setError('');
     try {
       const response = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/songs`);
-      setArtistSongs(response.data);
+      const filteredSongs = response.data.filter(song => song.primary_artist.id === artistId);
+      setArtistSongs(filteredSongs);
     } catch (error) {
       console.error('Error fetching artist songs from Genius API', error);
       setError('Error fetching artist songs: ' + error.message);
@@ -229,7 +230,7 @@ function App() {
             )}
             {artistSongs.length > 0 && (
               <div className="artist-songs">
-                <h2>Songs by {artistName}:</h2>
+                <h2>Songs by {artistsList.find(artist => artist.id === selectedArtistId)?.name}:</h2>
                 <ul>
                   {artistSongs.map(song => (
                     <li key={song.id}>{song.title} - {new Date(song.release_date).toLocaleDateString()}</li>
