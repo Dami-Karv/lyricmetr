@@ -16,6 +16,7 @@ function App() {
   const [artistSongs, setArtistSongs] = useState([]);
   const [startYear, setStartYear] = useState(2000);
   const [endYear, setEndYear] = useState(2020);
+  const [lyrics, setLyrics] = useState('');
 
   const fetchSongId = async (query) => {
     try {
@@ -38,31 +39,33 @@ function App() {
         throw new Error('Please enter both a song URL and a word to search for.');
       }
   
-      const songTitle = songUrl.split('genius.com/')[1].replace(/-/g, ' ').replace(' lyrics', '');
+      await fetchLyricsByUrl(songUrl);
       
-      // First, search for the song
-      const searchResponse = await axios.get(`/search?q=${encodeURIComponent(songTitle)}`);
-      if (!searchResponse.data || searchResponse.data.length === 0) {
-        throw new Error('Song not found');
+      if (lyrics) {
+        const count = countOccurrences(lyrics, word);
+        setResult(count);
+      } else {
+        throw new Error('No lyrics found');
       }
-      
-      const songId = searchResponse.data[0].id;
-  
-      // Then, get the song details
-      const songResponse = await axios.get(`/songs/${songId}`);
-      const songPath = songResponse.data.path;
-  
-      // Finally, get the lyrics
-      const lyricsResponse = await axios.get(`/lyrics?path=${encodeURIComponent(songPath)}`);
-      const lyrics = lyricsResponse.data;
-  
-      const count = countOccurrences(lyrics, word);
-  
-      setResult(count);
-      setSongDetails(songResponse.data);
     } catch (error) {
       console.error('Error fetching song data:', error);
       setError(error.message || 'Error fetching song data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchLyricsByUrl = async (url) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await axios.get('https://lyricmetrproxy.onrender.com/lyrics-by-url', {
+        params: { url }
+      });
+      setLyrics(response.data.lyrics);
+    } catch (error) {
+      console.error('Error fetching lyrics:', error);
+      setError('Error fetching lyrics: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -93,10 +96,24 @@ function App() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artist-songs`, {
-        params: { artistId, startYear, endYear, word }
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/songs`);
+      const songs = response.data.filter(song => {
+        const releaseYear = song.release_date_components?.year;
+        return releaseYear >= startYear && releaseYear <= endYear;
       });
-      setResult(response.data);
+  
+      const wordFrequency = {};
+  
+      for (const song of songs) {
+        const lyricsResponse = await fetchLyricsByUrl(song.url);
+        if (lyricsResponse.data.lyrics) {
+          const count = countOccurrences(lyricsResponse.data.lyrics, word);
+          const year = song.release_date_components.year;
+          wordFrequency[year] = (wordFrequency[year] || 0) + count;
+        }
+      }
+  
+      setResult(wordFrequency);
     } catch (error) {
       console.error('Error fetching songs by year from Genius API', error);
       setError('Error fetching songs by year: ' + error.message);
@@ -169,22 +186,31 @@ function App() {
           <button onClick={() => setActiveButton('listSongsByArtist')}>List Songs by Artist</button>
         </div>
         {activeButton === 'countWord' && (
-          <div className="input-container">
-            <input
-              type="text"
-              placeholder="Enter word to search"
-              value={word}
-              onChange={(e) => setWord(e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Enter Genius song URL"
-              value={songUrl}
-              onChange={(e) => setSongUrl(e.target.value)}
-            />
-            <button onClick={fetchSongLyrics}>Fetch</button>
-          </div>
+  <div className="input-container">
+    <input
+      type="text"
+      placeholder="Enter word to search"
+      value={word}
+      onChange={(e) => setWord(e.target.value)}
+    />
+    <input
+      type="text"
+      placeholder="Enter Genius song URL"
+      value={songUrl}
+      onChange={(e) => setSongUrl(e.target.value)}
+    />
+    <button onClick={fetchSongLyrics}>Fetch</button>
+    {lyrics && (
+      <div className="lyrics-container">
+        <h2>Lyrics:</h2>
+        <pre>{lyrics}</pre>
+        {result !== null && (
+          <p>The word "{word}" appears {result} times in the lyrics.</p>
         )}
+      </div>
+    )}
+  </div>
+)}
         {activeButton === 'wordFrequency' && (
           <div className="input-container">
             <input
