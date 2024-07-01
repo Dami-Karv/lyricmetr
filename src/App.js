@@ -35,32 +35,32 @@ function App() {
     }
   };
 
-  const fetchSongLyrics = async () => {
-    setIsLoading(true);
-    setError('');
-    try {
-      if (!songUrl || !word) {
-        throw new Error('Please enter both a song URL and a word to search for.');
-      }
-  
-      const response = await axios.get('https://lyricmetrproxy.onrender.com/lyrics-by-url', {
-        params: { url: songUrl }
-      });
-  
-      if (response.data && response.data.lyrics) {
-        setLyrics(response.data.lyrics);
-        const count = countOccurrences(response.data.lyrics, word);
-        setResult(count);
-      } else {
-        throw new Error('No lyrics found');
-      }
-    } catch (error) {
-      console.error('Error fetching song data:', error);
-      setError(error.message || 'Error fetching song data');
-    } finally {
-      setIsLoading(false);
+const fetchSongLyrics = async () => {
+  setIsLoading(true);
+  setError('');
+  try {
+    if (!songUrl || !word) {
+      throw new Error('Please enter both a song URL and a word to search for.');
     }
-  };
+
+    const response = await axios.get('https://lyricmetrproxy.onrender.com/lyrics-by-url', {
+      params: { url: songUrl }
+    });
+
+    if (response.data && response.data.lyrics) {
+      setLyrics(response.data.lyrics);
+      const count = countOccurrences(response.data.lyrics, word);
+      setResult(count);
+    } else {
+      throw new Error('No lyrics found');
+    }
+  } catch (error) {
+    console.error('Error fetching song data:', error);
+    setError(error.message || 'Error fetching song data');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const fetchLyricsByUrl = async (url) => {
     setIsLoading(true);
@@ -168,17 +168,23 @@ function App() {
     });
   };
 
+  const handleButtonClick = (buttonName) => {
+    setActiveButton(buttonName);
+    setResult(null);
+    setLyrics('');
+    setError('');
+  };
   
   return (
     <div className="App">
       <header className="App-header">
         <h1>Lyricmetr</h1>
         <div className="button-container">
-          <button onClick={() => setActiveButton('countWord')}>Count Word in Song</button>
-          <button onClick={() => setActiveButton('wordFrequency')}>Word Frequency by Year</button>
-          <button onClick={() => setActiveButton('listSongsByArtist')}>List Songs by Artist</button>
-        </div>
-        {activeButton === 'countWord' && (
+  <button onClick={() => handleButtonClick('countWord')}>Count Word in Song</button>
+  <button onClick={() => handleButtonClick('wordFrequency')}>Word Frequency by Year</button>
+  <button onClick={() => handleButtonClick('listSongsByArtist')}>List Songs by Artist</button>
+</div>
+     {activeButton === 'countWord' && (
   <div className="input-container">
     <input
       type="text"
