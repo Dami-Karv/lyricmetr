@@ -21,6 +21,8 @@ function App() {
   const [startYear, setStartYear] = useState(2000);
   const [endYear, setEndYear] = useState(2020);
   const [lyrics, setLyrics] = useState('');
+  const [words, setWords] = useState('');
+
 
   const fetchSongId = async (query) => {
     try {
@@ -135,6 +137,10 @@ const fetchSongLyrics = async () => {
     await fetchArtistSongs(artistId);
   };
 
+  const handleWordsChange = (e) => {
+    setWords(e.target.value);
+  };
+
   const searchArtists  = async () => {
     setIsLoading(true);
     setError('');
@@ -149,11 +155,30 @@ const fetchSongLyrics = async () => {
     }
   };
 
-  const fetchWordFrequency = () => {
-    if (selectedArtistId && word) {
-      fetchArtistSongsByYear(selectedArtistId, startYear, endYear, word);
+  const fetchWordFrequency = async () => {
+    if (selectedArtistId && words) {
+      setIsLoading(true);
+      setError('');
+      const wordList = words.split(',').map(word => word.trim());
+      try {
+        const results = await Promise.all(wordList.map(word => 
+          axios.get(`https://lyricmetrproxy.onrender.com/artist-songs-word-frequency`, {
+            params: { artistId: selectedArtistId, startYear, endYear, word }
+          })
+        ));
+        const combinedResults = results.reduce((acc, res, index) => {
+          acc[wordList[index]] = res.data;
+          return acc;
+        }, {});
+        setResult(combinedResults);
+      } catch (error) {
+        console.error('Error fetching songs by year from Genius API', error);
+        setError('Error fetching songs by year: ' + error.message);
+      } finally {
+        setIsLoading(false);
+      }
     } else {
-      setError('Please select an artist and enter a word.');
+      setError('Please select an artist and enter at least one word.');
     }
   };
 
@@ -205,6 +230,8 @@ const fetchSongLyrics = async () => {
         )}
         {activeButton === 'wordFrequency' && (
           <div className="input-container">
+
+
             <input
               type="text"
               placeholder="Enter artist name"
@@ -241,43 +268,47 @@ const fetchSongLyrics = async () => {
                   value={endYear}
                   onChange={(e) => setEndYear(e.target.value)}
                 />
+
+
                 <input
-                  type="text"
-                  placeholder="Enter word to search"
-                  value={word}
-                  onChange={(e) => setWord(e.target.value)}
-                />
+      type="text"
+      placeholder="Enter word(s) to search (comma-separated)"
+      value={words}
+      onChange={handleWordsChange}
+    />
+
+
                 <button onClick={fetchWordFrequency}>Fetch Word Frequency</button>
               </div>
             )}
             {result && (
-              <div className="result">
-                <h2>Word Frequency by Year</h2>
-                <Bar
-                  data={{
-                    labels: Object.keys(result),
-                    datasets: [
-                      {
-                        label: `Frequency of "${word}"`,
-                        data: Object.values(result),
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                      },
-                    ],
-                  }}
-                  options={{
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Frequency',
-                        },
-                      },
-                      x: {
-                        title: {
-                          display: true,
-                          text: 'Year',
-                        },
+      <div className="result">
+        <h2>Frequency for word(s) {words} for the selected years for {artistsList.find(artist => artist.id === selectedArtistId)?.name}</h2>
+        <Bar
+          data={{
+            labels: Object.keys(Object.values(result)[0]),
+            datasets: Object.entries(result).map(([word, data], index) => ({
+              label: word,
+              data: Object.values(data),
+              backgroundColor: `rgba(${index * 50}, ${255 - index * 50}, ${150}, 0.6)`,
+            })),
+          }}
+          options={{
+            scales: {
+              y: {
+                beginAtZero: true,
+                stacked: true,
+                title: {
+                  display: true,
+                  text: 'Frequency',
+                },
+              },
+              x: {
+                stacked: true,
+                title: {
+                  display: true,
+                  text: 'Year',
+                },
                       },
                     },
                   }}
