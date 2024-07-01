@@ -180,36 +180,29 @@ const fetchSongLyrics = async () => {
       <header className="App-header">
         <h1>Lyricmetr</h1>
         <div className="button-container">
-  <button onClick={() => handleButtonClick('countWord')}>Count Word in Song</button>
-  <button onClick={() => handleButtonClick('wordFrequency')}>Word Frequency by Year</button>
-  <button onClick={() => handleButtonClick('listSongsByArtist')}>List Songs by Artist</button>
-</div>
-     {activeButton === 'countWord' && (
-  <div className="input-container">
-    <input
-      type="text"
-      placeholder="Enter word to search"
-      value={word}
-      onChange={(e) => setWord(e.target.value)}
-    />
-    <input
-      type="text"
-      placeholder="Enter Genius song URL"
-      value={songUrl}
-      onChange={(e) => setSongUrl(e.target.value)}
-    />
-    <button onClick={fetchSongLyrics}>Fetch</button>
-    {lyrics && (
-      <div className="lyrics-container">
-        <h2>Lyrics:</h2>
-        <pre>{lyrics}</pre>
-        {result !== null && (
-          <p>The word "{word}" appears {result} times in the lyrics.</p>
+          <button onClick={() => handleButtonClick('countWord')}>Count Word in Song</button>
+          <button onClick={() => handleButtonClick('wordFrequency')}>Word Frequency by Year</button>
+        </div>
+        {activeButton === 'countWord' && (
+          <div className="input-container">
+            <input
+              type="text"
+              placeholder="Enter word to search"
+              value={word}
+              onChange={(e) => setWord(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Enter Genius song URL"
+              value={songUrl}
+              onChange={(e) => setSongUrl(e.target.value)}
+            />
+            <button onClick={fetchSongLyrics}>Fetch</button>
+            {result !== null && (
+              <p>The word "{word}" appears {result} times in the lyrics.</p>
+            )}
+          </div>
         )}
-      </div>
-    )}
-  </div>
-)}
         {activeButton === 'wordFrequency' && (
           <div className="input-container">
             <input
@@ -257,79 +250,43 @@ const fetchSongLyrics = async () => {
                 <button onClick={fetchWordFrequency}>Fetch Word Frequency</button>
               </div>
             )}
-          </div>
-        )}
-        {activeButton === 'listSongsByArtist' && (
-          <div className="input-container">
-            <input
-              type="text"
-              placeholder="Enter artist Name"
-              value={artistName}
-              onChange={(e) => setArtistName(e.target.value)}
-            />
-            <button onClick={searchArtists}>Search Artists</button>
-            {artistsList.length > 0 && (
-              <div className="artist-list">
-                <h2>Select an Artist:</h2>
-                <ul>
-                  {artistsList.map(artist => (
-                    <li key={artist.id} onClick={() => handleArtistSelection(artist.id)}>{artist.name}</li>
-                  ))}
-                </ul>
+            {result && (
+              <div className="result">
+                <h2>Word Frequency by Year</h2>
+                <Bar
+                  data={{
+                    labels: Object.keys(result),
+                    datasets: [
+                      {
+                        label: `Frequency of "${word}"`,
+                        data: Object.values(result),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                      },
+                    ],
+                  }}
+                  options={{
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        title: {
+                          display: true,
+                          text: 'Frequency',
+                        },
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: 'Year',
+                        },
+                      },
+                    },
+                  }}
+                />
               </div>
             )}
-            {artistSongs.length > 0 && (
-  <div className="artist-songs">
-    <h2>Songs by {artistsList.find(artist => artist.id === selectedArtistId)?.name}:</h2>
-    <ul>
-      {artistSongs.map(song => (
-        <li key={song.id}>
-          {song.title} - {formatDate(song.release_date_components)}
-          (Raw: {song.release_date_for_display})
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
-
-
           </div>
         )}
         {isLoading && <p>Loading...</p>}
-        {result && (
-  <div className="result">
-    <h2>Word Frequency by Year</h2>
-    <Bar
-      data={{
-        labels: Object.keys(result),
-        datasets: [
-          {
-            label: `Frequency of "${word}"`,
-            data: Object.values(result),
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-          },
-        ],
-      }}
-      options={{
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Frequency',
-            },
-          },
-          x: {
-            title: {
-              display: true,
-              text: 'Year',
-            },
-          },
-        },
-      }}
-    />
-  </div>
-)}
         {error && <p className="error">{error}</p>}
       </header>
     </div>
