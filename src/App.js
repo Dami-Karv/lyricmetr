@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function App() {
   const [word, setWord] = useState('');
@@ -39,10 +43,13 @@ function App() {
         throw new Error('Please enter both a song URL and a word to search for.');
       }
   
-      await fetchLyricsByUrl(songUrl);
-      
-      if (lyrics) {
-        const count = countOccurrences(lyrics, word);
+      const response = await axios.get('https://lyricmetrproxy.onrender.com/lyrics-by-url', {
+        params: { url: songUrl }
+      });
+  
+      if (response.data && response.data.lyrics) {
+        setLyrics(response.data.lyrics);
+        const count = countOccurrences(response.data.lyrics, word);
         setResult(count);
       } else {
         throw new Error('No lyrics found');
@@ -96,24 +103,10 @@ function App() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/songs`);
-      const songs = response.data.filter(song => {
-        const releaseYear = song.release_date_components?.year;
-        return releaseYear >= startYear && releaseYear <= endYear;
+      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artist-songs-word-frequency`, {
+        params: { artistId, startYear, endYear, word }
       });
-  
-      const wordFrequency = {};
-  
-      for (const song of songs) {
-        const lyricsResponse = await fetchLyricsByUrl(song.url);
-        if (lyricsResponse.data.lyrics) {
-          const count = countOccurrences(lyricsResponse.data.lyrics, word);
-          const year = song.release_date_components.year;
-          wordFrequency[year] = (wordFrequency[year] || 0) + count;
-        }
-      }
-  
-      setResult(wordFrequency);
+      setResult(response.data);
     } catch (error) {
       console.error('Error fetching songs by year from Genius API', error);
       setError('Error fetching songs by year: ' + error.message);
@@ -298,13 +291,39 @@ function App() {
         )}
         {isLoading && <p>Loading...</p>}
         {result && (
-          <div className="result">
-            <h2>Word Frequency by Year</h2>
-            {Object.entries(result).map(([year, frequency]) => (
-              <p key={year}>{year}: {frequency}</p>
-            ))}
-          </div>
-        )}
+  <div className="result">
+    <h2>Word Frequency by Year</h2>
+    <Bar
+      data={{
+        labels: Object.keys(result),
+        datasets: [
+          {
+            label: `Frequency of "${word}"`,
+            data: Object.values(result),
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+          },
+        ],
+      }}
+      options={{
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Frequency',
+            },
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Year',
+            },
+          },
+        },
+      }}
+    />
+  </div>
+)}
         {error && <p className="error">{error}</p>}
       </header>
     </div>
