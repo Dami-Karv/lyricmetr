@@ -22,7 +22,16 @@ function App() {
   const [endYear, setEndYear] = useState(2020);
   const [lyrics, setLyrics] = useState('');
   const [words, setWords] = useState('');
+  const [wordCounts, setWordCounts] = useState({});
 
+  const chartColors = [
+    'rgba(255, 99, 132, 0.6)',   // Red
+    'rgba(54, 162, 235, 0.6)',   // Blue
+    'rgba(255, 206, 86, 0.6)',   // Yellow
+    'rgba(75, 192, 192, 0.6)',   // Green
+    'rgba(153, 102, 255, 0.6)',  // Purple
+    'rgba(255, 159, 64, 0.6)'    // Orange
+  ];
 
   const fetchSongId = async (query) => {
     try {
@@ -159,6 +168,8 @@ const fetchSongLyrics = async () => {
     if (selectedArtistId && words) {
       setIsLoading(true);
       setError('');
+      setResult(null); // Clear previous results
+      setWordCounts({}); // Clear previous word counts
       const wordList = words.split(',').map(word => word.trim());
       try {
         const results = await Promise.all(wordList.map(word => 
@@ -170,6 +181,14 @@ const fetchSongLyrics = async () => {
           acc[wordList[index]] = res.data;
           return acc;
         }, {});
+        
+        // Calculate total word counts
+        const totalCounts = {};
+        Object.entries(combinedResults).forEach(([word, yearData]) => {
+          totalCounts[word] = Object.values(yearData).reduce((sum, count) => sum + count, 0);
+        });
+        
+        setWordCounts(totalCounts);
         setResult(combinedResults);
       } catch (error) {
         console.error('Error fetching songs by year from Genius API', error);
@@ -181,6 +200,7 @@ const fetchSongLyrics = async () => {
       setError('Please select an artist and enter at least one word.');
     }
   };
+
 
   const formatDate = (dateComponents) => {
     if (!dateComponents) return 'Unknown Date';
@@ -270,29 +290,38 @@ const fetchSongLyrics = async () => {
                 />
 
 
-                <input
+<input
       type="text"
       placeholder="Enter word(s) to search (comma-separated)"
       value={words}
       onChange={handleWordsChange}
     />
 
-
+    
                 <button onClick={fetchWordFrequency}>Fetch Word Frequency</button>
               </div>
             )}
+
+            
             {result && (
       <div className="result">
-        <h2>Frequency for word(s) {words} for the selected years for {artistsList.find(artist => artist.id === selectedArtistId)?.name}</h2>
+       <h2>
+          Frequency for word(s) {words.split(',').map(word => 
+            `${word.trim()} (${wordCounts[word.trim()] || 0})`
+          ).join(', ')} for the selected years for {artistsList.find(artist => artist.id === selectedArtistId)?.name}
+        </h2>
+
+
         <Bar
           data={{
             labels: Object.keys(Object.values(result)[0]),
             datasets: Object.entries(result).map(([word, data], index) => ({
               label: word,
               data: Object.values(data),
-              backgroundColor: `rgba(${index * 50}, ${255 - index * 50}, ${150}, 0.6)`,
+              backgroundColor: chartColors[index % chartColors.length],
             })),
           }}
+          
           options={{
             scales: {
               y: {
