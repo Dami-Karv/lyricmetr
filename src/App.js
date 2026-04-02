@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 import { Bar } from 'react-chartjs-2';
@@ -7,87 +7,31 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function App() {
+  const latestYear = new Date().getFullYear();
   const [word, setWord] = useState('');
   const [songUrl, setSongUrl] = useState('');
   const [result, setResult] = useState(null);
-  const [songDetails, setSongDetails] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeButton, setActiveButton] = useState('');
   const [artistName, setArtistName] = useState('');
   const [artistsList, setArtistsList] = useState([]);
   const [selectedArtistId, setSelectedArtistId] = useState(null);
-  const [artistSongs, setArtistSongs] = useState([]);
   const [startYear, setStartYear] = useState(2000);
-  const [endYear, setEndYear] = useState(2020);
-  const [lyrics, setLyrics] = useState('');
+  const [endYear, setEndYear] = useState(latestYear);
   const [words, setWords] = useState('');
   const [wordCounts, setWordCounts] = useState({});
+  const [frequencyMeta, setFrequencyMeta] = useState(null);
+  const artistSearchCacheRef = useRef(new Map());
 
   const chartColors = [
-    'rgba(255, 99, 132, 0.6)',   // Red
-    'rgba(54, 162, 235, 0.6)',   // Blue
-    'rgba(255, 206, 86, 0.6)',   // Yellow
-    'rgba(75, 192, 192, 0.6)',   // Green
-    'rgba(153, 102, 255, 0.6)',  // Purple
-    'rgba(255, 159, 64, 0.6)'    // Orange
+    'rgba(255, 99, 132, 0.6)',
+    'rgba(54, 162, 235, 0.6)',
+    'rgba(255, 206, 86, 0.6)',
+    'rgba(75, 192, 192, 0.6)',
+    'rgba(153, 102, 255, 0.6)',
+    'rgba(255, 159, 64, 0.6)'
   ];
-
-  const fetchSongId = async (query) => {
-    try {
-      const response = await axios.get('https://lyricmetrproxy.onrender.com/search', {
-        params: { q: query }
-      });
-      const song = response.data[0];
-      return song.id;
-    } catch (error) {
-      console.error('Error Fetching song ID from Genius API ', error);
-      throw new Error('Error fetching song ID');
-    }
-  };
-
-const fetchSongLyrics = async () => {
-  setIsLoading(true);
-  setError('');
-  try {
-    if (!songUrl || !word) {
-      throw new Error('Please enter both a song URL and a word to search for.');
-    }
-
-    const response = await axios.get('https://lyricmetrproxy.onrender.com/lyrics-by-url', {
-      params: { url: songUrl }
-    });
-
-    if (response.data && response.data.lyrics) {
-      setLyrics(response.data.lyrics);
-      const count = countOccurrences(response.data.lyrics, word);
-      setResult(count);
-    } else {
-      throw new Error('No lyrics found');
-    }
-  } catch (error) {
-    console.error('Error fetching song data:', error);
-    setError(error.message || 'Error fetching song data');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const fetchLyricsByUrl = async (url) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const response = await axios.get('https://lyricmetrproxy.onrender.com/lyrics-by-url', {
-        params: { url }
-      });
-      setLyrics(response.data.lyrics);
-    } catch (error) {
-      console.error('Error fetching lyrics:', error);
-      setError('Error fetching lyrics: ' + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const countOccurrences = (text, searchTerm) => {
     const regex = new RegExp(searchTerm, 'gi');
@@ -95,131 +39,188 @@ const fetchSongLyrics = async () => {
     return matches.length;
   };
 
+  const fetchSongLyrics = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      if (!songUrl || !word) {
+        throw new Error('Please enter both a song URL and a word to search for.');
+      }
+
+      const response = await axios.get('/api/lyrics-by-url', {
+        params: { url: songUrl }
+      });
+
+      if (!response.data || !response.data.lyrics) {
+        throw new Error('No lyrics found');
+      }
+
+      const count = countOccurrences(response.data.lyrics, word);
+      setResult(count);
+    } catch (requestError) {
+      console.error('Error fetching song data:', requestError);
+      setError(requestError.message || 'Error fetching song data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const fetchArtistId = async (query) => {
     try {
-      const response = await axios.get('https://lyricmetrproxy.onrender.com/search-artist', {
+      const response = await axios.get('/api/search-artist', {
         params: { q: query }
       });
-      if (response.data.length === 0) {
+      if (!response.data || response.data.length === 0) {
         throw new Error('No artist found');
       }
       return response.data;
-    } catch (error) {
-      console.error('Error fetching artist ID from Genius API', error);
-      throw new Error('Error fetching artist ID');
+    } catch (requestError) {
+      console.error('Error fetching artist ID from Genius API', requestError);
+      const details =
+        requestError?.response?.data?.details ||
+        requestError?.response?.data?.error ||
+        requestError.message ||
+        'Error fetching artist ID';
+      throw new Error(details);
     }
   };
 
-  const fetchArtistSongsByYear = async (artistId, startYear, endYear, word) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artist-songs-word-frequency`, {
-        params: { artistId, startYear, endYear, word }
-      });
-      setResult(response.data);
-    } catch (error) {
-      console.error('Error fetching songs by year from Genius API', error);
-      setError('Error fetching songs by year: ' + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchArtistSongs = async (artistId) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const response = await axios.get(`https://lyricmetrproxy.onrender.com/artists/${artistId}/songs`);
-      const filteredSongs = response.data.filter(song => song.primary_artist.id === artistId);
-      setArtistSongs(filteredSongs);
-    } catch (error) {
-      console.error('Error fetching artist songs from Genius API', error);
-      setError('Error fetching artist songs: ' + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleArtistSelection = async (artistId) => {
+  const handleArtistSelection = (artistId) => {
     setSelectedArtistId(artistId);
-    await fetchArtistSongs(artistId);
   };
 
-  const handleWordsChange = (e) => {
-    setWords(e.target.value);
+  const handleWordsChange = (event) => {
+    setWords(event.target.value);
   };
 
-  const searchArtists  = async () => {
+  const handleStartYearChange = (event) => {
+    const year = Number(event.target.value);
+    setStartYear(year);
+    if (year > endYear) {
+      setEndYear(year);
+    }
+  };
+
+  const handleEndYearChange = (event) => {
+    const year = Number(event.target.value);
+    setEndYear(year);
+    if (year < startYear) {
+      setStartYear(year);
+    }
+  };
+
+  const searchArtists = async () => {
+    const normalizedQuery = artistName.trim().toLowerCase();
+    if (!normalizedQuery) {
+      setError('Please enter an artist name.');
+      return;
+    }
+
+    const cachedArtists = artistSearchCacheRef.current.get(normalizedQuery);
+    if (cachedArtists) {
+      setArtistsList(cachedArtists);
+      setError('');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     try {
       const artists = await fetchArtistId(artistName);
+      artistSearchCacheRef.current.set(normalizedQuery, artists);
       setArtistsList(artists);
-    } catch (error) {
-      console.error('Error searching for artists from Genius API', error);
-      setError('Error searching for artists: ' + error.message);
+    } catch (requestError) {
+      console.error('Error searching for artists from Genius API', requestError);
+      setError('Error searching for artists: ' + requestError.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const fetchWordFrequency = async () => {
-    if (selectedArtistId && words) {
-      setIsLoading(true);
-      setError('');
-      setResult(null); // Clear previous results
-      setWordCounts({}); // Clear previous word counts
-      const wordList = words.split(',').map(word => word.trim());
-      try {
-        const results = await Promise.all(wordList.map(word => 
-          axios.get(`https://lyricmetrproxy.onrender.com/artist-songs-word-frequency`, {
-            params: { artistId: selectedArtistId, startYear, endYear, word }
-          })
-        ));
-        const combinedResults = results.reduce((acc, res, index) => {
-          acc[wordList[index]] = res.data;
-          return acc;
-        }, {});
-        
-        // Calculate total word counts
-        const totalCounts = {};
-        Object.entries(combinedResults).forEach(([word, yearData]) => {
-          totalCounts[word] = Object.values(yearData).reduce((sum, count) => sum + count, 0);
-        });
-        
-        setWordCounts(totalCounts);
-        setResult(combinedResults);
-      } catch (error) {
-        console.error('Error fetching songs by year from Genius API', error);
-        setError('Error fetching songs by year: ' + error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
+    if (!selectedArtistId || !words.trim()) {
       setError('Please select an artist and enter at least one word.');
+      return;
     }
-  };
 
+    setIsLoading(true);
+    setError('');
+    setResult(null);
+    setWordCounts({});
+    setFrequencyMeta(null);
 
-  const formatDate = (dateComponents) => {
-    if (!dateComponents) return 'Unknown Date';
-    const { year, month, day } = dateComponents;
-    if (!year || !month || !day) return 'Unknown Date';
-    return new Date(year, month - 1, day).toLocaleDateString(undefined, { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    const wordList = words
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (wordList.length === 0) {
+      setError('Please enter at least one valid word.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.get('/api/artist-songs-word-frequency', {
+        params: {
+          artistId: selectedArtistId,
+          startYear,
+          endYear,
+          words: wordList.join(','),
+          speed: 'balanced',
+          maxSongsPerYear: 8
+        }
+      });
+
+      // New backend shape: { frequencies, totals }
+      // Backward compatibility: single-word map by year.
+      const combinedResults =
+        response.data?.frequencies ||
+        (wordList.length === 1 ? { [wordList[0]]: response.data || {} } : {});
+
+      const totals = response.data?.totals || Object.entries(combinedResults).reduce((acc, [w, yearData]) => {
+        acc[w] = Object.values(yearData || {}).reduce((sum, count) => sum + count, 0);
+        return acc;
+      }, {});
+
+      setWordCounts(totals);
+      setResult(combinedResults);
+      setFrequencyMeta(response.data?.meta || null);
+    } catch (requestError) {
+      console.error('Error fetching songs by year from Genius API', requestError);
+      const details =
+        requestError?.response?.data?.error ||
+        requestError?.response?.data?.details ||
+        requestError.message;
+      setError('Error fetching songs by year: ' + details);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleButtonClick = (buttonName) => {
     setActiveButton(buttonName);
     setResult(null);
-    setLyrics('');
     setError('');
+    setFrequencyMeta(null);
   };
-  
+
+  const selectedArtist = artistsList.find((artist) => artist.id === selectedArtistId);
+
+  const chartLabels = useMemo(() => {
+    if (!result) return [];
+    const labelSet = new Set();
+    Object.values(result).forEach((yearMap) => {
+      Object.keys(yearMap || {}).forEach((year) => labelSet.add(year));
+    });
+    return Array.from(labelSet).sort((a, b) => Number(a) - Number(b));
+  }, [result]);
+
+  const requestedWords = words
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
   return (
     <div className="App">
       <header className="App-header">
@@ -228,47 +229,51 @@ const fetchSongLyrics = async () => {
           <button onClick={() => handleButtonClick('countWord')}>Count Word in Song</button>
           <button onClick={() => handleButtonClick('wordFrequency')}>Word Frequency by Year</button>
         </div>
+
         {activeButton === 'countWord' && (
           <div className="input-container">
             <input
               type="text"
               placeholder="Enter word to search"
               value={word}
-              onChange={(e) => setWord(e.target.value)}
+              onChange={(event) => setWord(event.target.value)}
             />
             <input
               type="text"
               placeholder="Enter Genius song URL"
               value={songUrl}
-              onChange={(e) => setSongUrl(e.target.value)}
+              onChange={(event) => setSongUrl(event.target.value)}
             />
             <button onClick={fetchSongLyrics}>Fetch</button>
-            {result !== null && (
+            {typeof result === 'number' && (
               <p>The word "{word}" appears {result} times in the lyrics.</p>
             )}
           </div>
         )}
+
         {activeButton === 'wordFrequency' && (
-          <div className="input-container">
-
-
+          <div className="input-container wide">
             <input
               type="text"
               placeholder="Enter artist name"
               value={artistName}
-              onChange={(e) => setArtistName(e.target.value)}
+              onChange={(event) => setArtistName(event.target.value)}
             />
             <button onClick={searchArtists}>Search Artists</button>
+
             {artistsList.length > 0 && (
               <div className="artist-list">
                 <h2>Select an Artist:</h2>
                 <ul>
-                  {artistsList.map(artist => (
-                    <li key={artist.id} onClick={() => handleArtistSelection(artist.id)}>{artist.name}</li>
+                  {artistsList.map((artist) => (
+                    <li key={artist.id} onClick={() => handleArtistSelection(artist.id)}>
+                      {artist.name}
+                    </li>
                   ))}
                 </ul>
               </div>
             )}
+
             {selectedArtistId && (
               <div className="year-slider">
                 <h2>Select Year Range</h2>
@@ -276,84 +281,100 @@ const fetchSongLyrics = async () => {
                 <input
                   type="range"
                   min="1950"
-                  max="2024"
+                  max={latestYear}
                   value={startYear}
-                  onChange={(e) => setStartYear(e.target.value)}
+                  onChange={handleStartYearChange}
                 />
                 <label>End Year: {endYear}</label>
                 <input
                   type="range"
                   min="1950"
-                  max="2024"
+                  max={latestYear}
                   value={endYear}
-                  onChange={(e) => setEndYear(e.target.value)}
+                  onChange={handleEndYearChange}
                 />
-
-
-<input
-      type="text"
-      placeholder="Enter word(s) to search (comma-separated)"
-      value={words}
-      onChange={handleWordsChange}
-    />
-
-    
+                <input
+                  type="text"
+                  placeholder="Enter word(s) to search (comma-separated)"
+                  value={words}
+                  onChange={handleWordsChange}
+                />
                 <button onClick={fetchWordFrequency}>Fetch Word Frequency</button>
               </div>
             )}
 
-            
             {result && (
-      <div className="result">
-       <h2>
-          Frequency for word(s) {words.split(',').map(word => 
-            `${word.trim()} (${wordCounts[word.trim()] || 0})`
-          ).join(', ')} for the selected years for {artistsList.find(artist => artist.id === selectedArtistId)?.name}
-        </h2>
+              <div className="result">
+                <h2>
+                  Frequency for word(s){' '}
+                  {requestedWords
+                    .map((requestedWord) => `${requestedWord} (${wordCounts[requestedWord] || 0})`)
+                    .join(', ')}{' '}
+                  for the selected years for {selectedArtist?.name}
+                </h2>
 
-
-        <Bar
-          data={{
-            labels: Object.keys(Object.values(result)[0]),
-            datasets: Object.entries(result).map(([word, data], index) => ({
-              label: word,
-              data: Object.values(data),
-              backgroundColor: chartColors[index % chartColors.length],
-            })),
-          }}
-          
-          options={{
-            scales: {
-              y: {
-                beginAtZero: true,
-                stacked: true,
-                title: {
-                  display: true,
-                  text: 'Frequency',
-                },
-              },
-              x: {
-                stacked: true,
-                title: {
-                  display: true,
-                  text: 'Year',
-                },
-                      },
-                    },
-                  }}
-                />
+                {chartLabels.length > 0 ? (
+                  <div className="chart-wrapper">
+                    <Bar
+                      data={{
+                        labels: chartLabels,
+                        datasets: Object.entries(result).map(([resultWord, data], index) => ({
+                          label: resultWord,
+                          data: chartLabels.map((year) => data?.[year] || 0),
+                          backgroundColor: chartColors[index % chartColors.length]
+                        }))
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'top'
+                          }
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            stacked: true,
+                            title: {
+                              display: true,
+                              text: 'Frequency'
+                            }
+                          },
+                          x: {
+                            stacked: true,
+                            title: {
+                              display: true,
+                              text: 'Year'
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <p>No matches found for the selected years.</p>
+                )}
+                {frequencyMeta && frequencyMeta.scannedSongs > frequencyMeta.processedSongs && (
+                  <p className="meta-note">
+                    Fast mode sampled {frequencyMeta.processedSongs} of {frequencyMeta.scannedSongs} songs.
+                  </p>
+                )}
+                {frequencyMeta?.partial && (
+                  <p className="meta-note">
+                    Some requests were rate-limited by Genius; showing partial results.
+                  </p>
+                )}
               </div>
             )}
           </div>
         )}
+
         {isLoading && <p>Loading...</p>}
         {error && <p className="error">{error}</p>}
       </header>
     </div>
   );
 }
-
-
-
 
 export default App;
