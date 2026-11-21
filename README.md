@@ -1,70 +1,27 @@
-# Getting Started with Create React App
+# Lyricmetr
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Compare how often words and phrases appear in an artist’s lyrics by release year. The chart shows matches per 1,000 analyzed words by default and can switch to raw matches. The table includes the underlying counts and song coverage for each year.
 
-## Available Scripts
+## Run locally
 
-In the project directory, you can run:
+1. Install Node.js 18.17 or newer and run `npm ci`.
+2. Copy `.env.example` to `.env` and add a Genius API access token as `GENIUS_ACCESS_TOKEN`.
+3. Run `npm run dev` and open http://localhost:3000. The development client proxies requests to the API on port 5000.
 
-### `npm start`
+Run `npm run build` to create the production UI, then run `npm run server` with `NODE_ENV=production` to serve it with the API. The API listens on `API_PORT` or `PORT`, defaulting to 5000. `GET /api/health` checks that the server is running. A healthy server can still lack a Genius token.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## How the numbers are produced
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Artist and dates.** Search suggests primary artists from Genius song search results and shows an example track and Genius ID. Analysis uses songs whose Genius primary artist matches the selected ID and whose release year is in the requested range. Tracks where the artist is only featured, undated tracks, and explicitly labeled alternate versions such as remixes, demos, and instrumentals are excluded. Song IDs are deduplicated. A date on Genius may differ from the original release date.
+- **Counting.** Terms are matched case-insensitively on complete Unicode letter and number tokens. Internal apostrophes are kept, straight and curly apostrophes are equivalent, and accents remain significant. Other punctuation and whitespace separate words. A phrase matches consecutive tokens within a track and repeated occurrences of the same phrase are counted without overlap. Duplicate terms collapse to their first label. Recognized section headings are removed from scraped lyrics.
+- **Sampling.** Lyricmetr follows Genius pagination and never assumes that seeing a requested year once exhausts that year. It selects up to eight songs per year and 120 overall from the tracks found, ranking them by annotation count plus pyong count and breaking ties by song ID. It gives each eligible year one slot before returning for another. This favors tracks with more Genius engagement and is not a random sample.
+- **Coverage.** The table distinguishes eligible tracks found, selected tracks, analyzed tracks, failed fetches, and selected tracks that were skipped when work stopped. Sampling, catalog limits, fetch failures, and rate limits are reported as partial coverage. A dash means no usable lyrics were analyzed. A zero means lyrics were analyzed and the term had no matches. Lyricmetr calculates the rate as `raw matches × 1,000 ÷ analyzed words`.
+- **Limits.** Enter 1–6 comma-separated terms, up to 60 characters and eight words each, and an inclusive year range of up to 30 years from 1950 onward. Catalog discovery may stop after 60 pages or roughly 22 seconds. The overall work budget is roughly 45 seconds, plus time for requests already in flight. A capped catalog only reports songs found before the cap.
 
-### `npm test`
+## Verify
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- `npm run test:server` runs deterministic tests for counting, pagination, sampling, partial coverage, cache behavior, the Genius client, and the real Express routes with test fixtures.
+- `npm test -- --watchAll=false --runInBand` tests the artist-search-to-chart workflow and stale responses with mocked API calls.
+- `npm run build` checks that the production client compiles.
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+For a live check, configure a Genius token and search for an artist with dated tracks. Run the same short analysis twice to compare uncached and cached timings. Verify the included years, counts, and coverage against the Genius catalog, then try a prolific artist to check the partial-coverage message. Live results depend on Genius metadata, rate limits, and lyric-page markup.
